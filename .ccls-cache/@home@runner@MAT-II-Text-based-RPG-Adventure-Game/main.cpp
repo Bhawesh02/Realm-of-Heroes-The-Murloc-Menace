@@ -66,6 +66,14 @@ int random(int min, int max) {
   uniform_int_distribution<> dist(min, max);
   return dist(gen);
 }
+// activate based on probabilty percentage
+bool activate(int percentage) {
+  int ran = random(1, 100);
+  if (ran <= percentage)
+    return true;
+  return false;
+}
+
 // Character needs to have:
 // maxHealth
 // Melee Damage
@@ -98,11 +106,11 @@ public:
   void SetCurHealth(int hp) { curHealth = hp; }
   void SetAttack(int value) { attackStats = value; }
   void SetDefence(int value) { defenceStats = value; }
-  void SetIsAttacking() { isAttacking = true; }
-  void SetIsAttacked() { isAttacked = true; }
-  void SetIsHealing() { isHealing = true; }
+  void SetIsAttacking(bool value) { isAttacking = value; }
+  void SetIsAttacked(bool value) { isAttacked = value; }
+  void SetIsHealing(bool value) { isHealing = value; }
   void SetLevel(int value) { level = value; }
-  void SetAttackPower(int value){attackPow = value};
+  void SetAttackPower(int value) { attackPow = value; }
   void ResetActivity() {
     isAttacking = false;
     isAttacked = false;
@@ -138,21 +146,29 @@ public:
   // Deal Damage to enemy Character
   void DealDamage(Character &enemyCharacter, int attackPower) {
 
+    this->SetIsAttacking(true);
+    enemyCharacter.SetIsAttacked(true);
+    enemyCharacter.SpecialAbility();
     int damageAmt = (attackPower + attackStats) - enemyCharacter.GetDefence();
     int newHealth = enemyCharacter.GetMaxHealth() - damageAmt;
+
     cout << "\n\n"
-         << this->GetName() << " Dealth -> " << damageAmt << " to "
+         << this->GetName() << " tried dealing -> " << damageAmt << " to "
          << enemyCharacter.GetName() << "\n";
+    enemyCharacter.SpecialAbility(&enemyCharacter);
+    if (!(enemyCharacter.IsAttacked())) {
+      cout << endl
+           << enemyCharacter.GetName()
+           << " blocked the attack, no damage done.";
+      return;
+    }
     if (newHealth <= 0) {
       enemyCharacter.SetCurHealth(0);
       cout << enemyCharacter.GetName() << " has Died!! \n\n";
       return;
     }
     enemyCharacter.SetCurHealth(newHealth);
-    this->SetIsAttacking();
-    enemyCharacter.SetIsAttacked();
     this->SpecialAbility(&enemyCharacter);
-    enemyCharacter.SpecialAbility(&enemyCharacter);
   }
 
   // virtual destructor
@@ -161,6 +177,9 @@ public:
 class Player : public Character {
 private:
   int magicStats; // For heall
+  int critActivationPercentage = 10;
+  int blockActivationPercentage = 10;
+
 public:
   Player(string name, int hp, int as, int ds, int ms, int lev = 1)
       : Character(name, hp, as, ds, lev) {
@@ -177,14 +196,21 @@ public:
     // Critical hits (performs attack with massive damage boost) Probability -
     // 10%
     if (IsAttacking()) {
-      int randomNum = random(1, 100);
-      int critActivationPercentage = 10;
-      if (randomNum <= critActivationPercentage) {
+      if (activate(critActivationPercentage)) {
         // Deal Damge with Attack Power = 2 * attackStats
         cout << "\nCritical Hit!!  Addition Damage done to "
              << enemyCharacter->GetName() << "\n";
         int attackPower = 2 * GetAttackStat();
         DealDamage(*enemyCharacter, attackPower);
+      }
+    }
+    if (GetLevel() == 2)
+      return;
+    // Blocker (will get 0 damage on enemy hit) Probability - 10 %
+    if (IsAttacked()) {
+      if (activate(blockActivationPercentage)) {
+        cout << "Block";
+        SetIsAttacked(false);
       }
     }
   }
@@ -201,7 +227,7 @@ public:
       newHealth = GetMaxHealth();
     }
     SetCurHealth(newHealth);
-    SetIsHealing();
+    SetIsHealing(true);
     SpecialAbility();
   }
 };
@@ -211,6 +237,7 @@ int main() {
   player1->ShowStats();
   player2->ShowStats();
   player1->SetLevel(2);
+  player2->SetLevel(3);
   player1->DealDamage(*player2, 20);
   player2->ShowStats();
   delete player1;
