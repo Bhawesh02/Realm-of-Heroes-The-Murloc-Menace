@@ -148,14 +148,13 @@ public:
 
     this->SetIsAttacking(true);
     enemyCharacter.SetIsAttacked(true);
-    enemyCharacter.SpecialAbility();
     int damageAmt = (attackPower + attackStats) - enemyCharacter.GetDefence();
     int newHealth = enemyCharacter.GetMaxHealth() - damageAmt;
 
     cout << "\n\n"
          << this->GetName() << " tried dealing -> " << damageAmt << " to "
          << enemyCharacter.GetName() << "\n";
-    enemyCharacter.SpecialAbility(&enemyCharacter);
+    enemyCharacter.SpecialAbility();
     if (!(enemyCharacter.IsAttacked())) {
       cout << endl
            << enemyCharacter.GetName()
@@ -209,10 +208,13 @@ public:
     // Blocker (will get 0 damage on enemy hit) Probability - 10 %
     if (IsAttacked()) {
       if (activate(blockActivationPercentage)) {
-        cout << "Block";
+        cout<<"\n"<<GetName()<<" Special Ability Blocker activated\n";
         SetIsAttacked(false);
       }
     }
+    if (GetLevel() == 3)
+      return;
+    
   }
 
   // Healing
