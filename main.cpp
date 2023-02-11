@@ -76,8 +76,10 @@ enum CharacterState {
   Attacked,
   Healing,
   Invincible,
-  Critical
+  Critical,
+  Defence
 };
+enum ChacterType { PlayerType = 1, EnemyType, BossEnemyType };
 class Character {
 private:
   int maxHealth;
@@ -88,9 +90,12 @@ private:
   int level;
   string charName;
   CharacterState state = Idle;
+  ChacterType type;
+  int magicStats;
 
 public:
-  Character(string name, int hp, int as, int ds, int ap, int lev = 1) {
+  Character(string name, int hp, int as, int ds, int ap, ChacterType tp,
+            int ms = 0, int lev = 1) {
     maxHealth = hp;
     curHealth = maxHealth;
     attackStats = as;
@@ -98,6 +103,8 @@ public:
     charName = name;
     level = lev;
     attackPow = ap;
+    type = tp;
+    magicStats = ms;
   }
   //--Seters--
   void SetCurHealth(int hp) { curHealth = hp; }
@@ -107,7 +114,7 @@ public:
   void SetAttackPower(int value) { attackPow = value; }
   void SetState(CharacterState value) { state = value; }
   void ResetActivity() { state = Idle; }
-
+  void SetMagic(int value) { magicStats = value; }
   //--Geters--
 
   int GetLevel() { return level; }
@@ -116,41 +123,22 @@ public:
   int GetAttackStat() { return attackStats; }
   int GetDefence() { return defenceStats; }
   int GetAttackPower() { return attackPow; }
-  bool IsInvicible() {
-    if (state == Invincible)
-      return true;
-    return false;
-  }
-  bool IsAttacking() {
-    if (state == Attacking)
-      return true;
-    return false;
-  }
-  bool IsAttacked() {
-    if (state == Attacked)
-      return true;
-    return false;
-  }
-  bool IsHealing() {
-    if (state == Healing)
-      return true;
-    return false;
-  }
-  bool IsCritical() {
-    if (state == Critical)
-      return true;
-    return false;
-  }
+  int GetMagic() { return magicStats; }
+  CharacterState GetState() { return state; }
+
   string GetName() { return charName; }
   bool IsAlive() {
-    if (maxHealth <= 0)
+    if (curHealth <= 0)
       return false;
     return true;
   }
+  ChacterType GetType() { return type; }
   virtual void LevelUp() {
-    maxHealth += 2;
+    maxHealth += 50;
     attackStats += 2;
     defenceStats += 2;
+    level += 1;
+    curHealth = maxHealth;
   }
   virtual void ShowStats() {
     cout << "\n\nCurrent Stats  of " << charName << " are:\nHealth --> "
@@ -164,31 +152,41 @@ public:
   void DealDamage(Character *enemyCharacter, int attackPower) {
 
     this->SetState(Attacking);
-    enemyCharacter->SetState(Attacked);
     int damageAmt = (attackPower + attackStats) - enemyCharacter->GetDefence();
-
+    if (damageAmt <= 0)
+      damageAmt = 1;
     cout << "\n\n"
          << this->GetName() << " tried dealing -> " << damageAmt << " to "
          << enemyCharacter->GetName() << "\n";
-    enemyCharacter->SpecialAbility();
-    if (enemyCharacter->IsInvicible()) {
+    
+    if (enemyCharacter->GetState() == Invincible) {
       cout << endl
-           << enemyCharacter->IsInvicible() << enemyCharacter->GetName()
+           << enemyCharacter->GetName()
            << " blocked the attack, no damage done.";
       ResetActivity();
       enemyCharacter->ResetActivity();
       return;
     }
-    this->SpecialAbility();
+    if (enemyCharacter->GetType() != EnemyType) {
+      enemyCharacter->SetState(Attacked);
+      enemyCharacter->SpecialAbility();
+    }
+    if (GetType() != EnemyType)
+      this->SpecialAbility();
 
     cout << "\nAttack was successfull\n";
 
-    if (IsCritical()) {
+    if (GetState() == Critical) {
       cout << "\nIt was a Critical Hit 2x Damage\n";
       damageAmt *= 2;
     }
-
-    int newHealth = enemyCharacter->GetMaxHealth() - damageAmt;
+    if (enemyCharacter->GetState() == Defence) {
+      cout << "\n"
+           << enemyCharacter->GetName()
+           << " defened , damage reduced by half\n\n\n";
+      damageAmt /= 2;
+    }
+    int newHealth = enemyCharacter->GetHealth() - damageAmt;
     if (newHealth <= 0) {
       enemyCharacter->SetCurHealth(0);
       cout << enemyCharacter->GetName() << " has Died!! \n\n";
@@ -198,29 +196,63 @@ public:
     ResetActivity();
     enemyCharacter->ResetActivity();
   }
-
+  virtual void Heal(int healAmt = 0) {
+    cout << GetName() << " Cant use heal\n\n";
+  }
   // virtual destructor
   virtual ~Character() {}
 };
 class Player : public Character {
 private:
-  int magicStats; // For heall
   int critActivationPercentage = 10;
   int blockActivationPercentage = 10;
   int lifeStealActivationPercentage = 10;
 
 public:
   Player(string name, int hp, int as, int ds, int ms, int ap = 10)
-      : Character(name, hp, as, ds, ap) {
-    magicStats = ms;
-  }
+      : Character(name, hp, as, ds, ap, PlayerType, ms) {}
   void ShowStats() {
     Character::ShowStats();
-    cout << "Magic --> " << magicStats << "\n";
+    cout << "Magic --> " << GetMagic() << "\n";
   }
   void LevelUp() {
     Character::LevelUp();
-    magicStats += 2;
+    int swordAttackPower = 20;
+    int shieldDefeceneIncrease = 5;
+    int armourDefenceIncrease = 2;
+    int armourMagicIncrease = 5;
+    int bowAttackPower = 15;
+    switch (GetLevel()) {
+    case 2:
+      cout << "\nPlayer got a map\n";
+      break;
+    case 3:
+      cout << "\nPlayer got sword\n Mele damage attack power increase to "
+           << swordAttackPower
+           << "\nSpecial Ability Awarded - Critical hits (performs attack "
+              "with massive damage boost)\n";
+      SetAttackPower(swordAttackPower);
+      break;
+    case 4:
+      cout << "\nPlayer got a shield\nDeferce rose by "
+           << shieldDefeceneIncrease
+           << "\nSpecial Ability Awarded - Blocker (will get 0 damage on "
+              "enemy hit)";
+      SetDefence(GetDefence() + shieldDefeceneIncrease);
+      break;
+    case 5:
+      cout << "\nPlayer got a armour\nDeferce rose by " << armourDefenceIncrease
+           << "\nMagic rose by " << armourMagicIncrease
+           << "\nSpecial Ability Awarded - Blocker (will get 0 damage on "
+              "enemy hit)";
+      SetDefence(GetDefence() + armourDefenceIncrease);
+      SetMagic(GetMagic() + armourMagicIncrease);
+      break;
+    case 6:
+      cout << "\nPlayer got a Bow:\nCan do ranged damage next round will get "
+              "half damage\n";
+      break;
+    }
   }
   // Healing
   void Heal(int healAmt = 0) {
@@ -230,7 +262,7 @@ public:
     }
     SetState(Healing);
     if (!healAmt)
-      healAmt = (GetMaxHealth() / magicStats) + (magicStats / 2);
+      healAmt = (GetMaxHealth() / GetMagic()) + (GetMagic() / 2);
     int newHealth = GetHealth() + healAmt;
     cout << "\n" << GetName() << " is healed by " << healAmt << " points\n\n";
     if (newHealth > GetMaxHealth()) {
@@ -242,35 +274,35 @@ public:
   }
   // Special Ability
   void SpecialAbility(Character *enemyCharacter = NULL) {
-    if (GetLevel() == 3)
+    if (GetLevel() < 3)
       return;
     // Critical hits (performs attack with massive damage boost) Probability -
     // 10%
-    if (IsAttacking()) {
+    if (GetState() == Attacking) {
       if (activate(critActivationPercentage)) {
         SetState(Critical);
         return;
       }
     }
-    if (GetLevel() == 4)
+    if (GetLevel() < 4)
       return;
     // Blocker (will get 0 damage on enemy hit) Probability - 10 %
-    if (IsAttacked()) {
+    if (GetState() == Attacked) {
       if (activate(blockActivationPercentage)) {
         cout << "\n" << GetName() << " Special Ability Blocker activated\n";
         SetState(Invincible);
         return;
       }
     }
-    if (GetLevel() == 5)
+    if (GetLevel() < 5)
       return;
     // Life steal (Recovering a small amount of HP after giving damage)
     // Probability - 10 %
-    if (IsAttacking()) {
+    if (GetState() == Attacking) {
       if (activate(lifeStealActivationPercentage)) {
         cout << "\n" << GetName() << " Life Steal Ability Activated\n";
         int healAmt =
-            ((GetAttackStat() + magicStats) - enemyCharacter->GetDefence()) / 2;
+            ((GetAttackStat() + GetMagic()) - enemyCharacter->GetDefence()) / 2;
         Heal(healAmt);
         return;
       }
@@ -278,27 +310,31 @@ public:
   }
 };
 
-// In case I want add more feature to mob enemy
 class Enemy : public Character {
 public:
   Enemy(string name, int hp, int as, int ds, int ap = 10)
-      : Character(name, hp, as, ds, ap) {
+      : Character(name, hp, as, ds, ap, EnemyType) {
     cout << "\n" << name << " has spwawned\n";
   }
-  void SpecialAbility(Character *enemyCharacter = NULL) {}
+  // Will waste a round and in next round will defend to take half damage and
+  // might counterattack or defend again
+  void SpecialAbility(Character *enemyCharacter = NULL) {
+    cout << "\n\n" << GetName() << " will take half damage in next round\n";
+    SetState(Defence);
+  }
 };
+
+class BossEnemy : public Character {};
 
 class GamePlay {
 private:
   int gameOver = false;
 
 public:
-  GamePlay() {
-    cout<<"Lets Start the ganme:\n\n";
-  }
+  GamePlay() { cout << "Lets Start the game:\n\n"; }
   void SpawnEnemy(int num, Character *enemyies[num]) {
     int enemyHp = 100;
-    int attackStat = 10;
+    int attackStat = 15;
     int defenseStat = 5;
     for (int i = 0; i < num; i++) {
       enemyies[i] = new Enemy("Enemy " + to_string(i + 1), enemyHp, attackStat,
@@ -312,7 +348,7 @@ public:
     }
   }
 
-  bool AllEnemyAlive(int num, Character *enemyies[num]) {
+  bool IsAnyEnemyAlive(int num, Character *enemyies[num]) {
     int DeadEnemy = 0;
     for (int i = 0; i < num; i++) {
       if (!(enemyies[i]->IsAlive()))
@@ -323,19 +359,115 @@ public:
     return true;
   }
 
+  int ChooseEnemy(int num, Character *enemyies[num]) {
+    if (num == 1)
+      return 0;
+    cout << "\nChoose Enemy:\n";
+    int userInput;
+    for (int i = 0; i < num; i++)
+      if (enemyies[i]->IsAlive())
+        cout << "\nEnemy " + to_string(i + 1) << "\n";
+    int flag = 1;
+    cout << "\nEnter you selection:\n";
+    while (flag) {
+      while (!(cin >> userInput) || userInput < 1 || userInput > num) {
+        cout << "Choose a Enemy between 1 and " << num << " which is alive\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+      }
+      if (enemyies[userInput - 1]->IsAlive())
+        flag = 0;
+      else {
+        cout << "Enemy is dead, choose another:\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+      }
+    }
+
+    return userInput - 1;
+  }
+
+  void Combat(Character *player, int num, Character *enemyies[num]) {
+    int userInput;
+    int flag;
+    while (player->IsAlive() && IsAnyEnemyAlive(num, enemyies)) {
+      userInput = 0;
+      flag = 1;
+      while (flag) {
+        flag = 0;
+        cout << endl;
+        for (int i = 0; i < num; i++)
+          cout << enemyies[i]->GetName()
+               << " health is : " << enemyies[i]->GetHealth() << "\n";
+        cout << "Player Current Health: " << player->GetHealth()
+             << "\nPlayer choose what to do (1 -> Attack, 2 -> Heal, 3 -> Show "
+                "Current Stats)\n";
+        while (!(cin >> userInput) || userInput < 1 || userInput > 3) {
+          cout << "Choose a number between 1 and 3\n";
+          cin.clear();
+          cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+        int enemyToAttack;
+        switch (userInput) {
+        case 1:
+          enemyToAttack = ChooseEnemy(num, enemyies);
+          cout << "You Choose " << enemyies[enemyToAttack]->GetName() << "\n\n";
+          player->DealDamage(enemyies[enemyToAttack], player->GetAttackPower());
+
+          break;
+        case 2:
+          player->Heal();
+          break;
+        case 3:
+          player->ShowStats();
+          flag = 1;
+          break;
+        }
+      } 
+      // Mob Enemy turn
+      for (int i = 0; i < num; i++) {
+        if (enemyies[i]->GetType() != BossEnemyType &&
+            (enemyies[i]->IsAlive())) {
+          int attackChancePercentage = 75;
+          if (activate(attackChancePercentage)) {
+            enemyies[i]->DealDamage(player, enemyies[i]->GetAttackPower());
+          } else {
+            enemyies[i]->SpecialAbility();
+          }
+        }
+      }
+      
+    }
+  }
+
   void Play(Character *player) {
+    int boosLevel = 6;
+
     player->ShowStats();
+    for (int lev = 1; lev < boosLevel && player->IsAlive(); lev++) {
+      int enyNum = lev;
+      Character *enemyies[enyNum];
+      SpawnEnemy(enyNum, enemyies);
+      Combat(player, enyNum, enemyies);
+      DeleteEnemy(enyNum, enemyies);
+      if (player->IsAlive())
+        player->LevelUp();
+    }
+    cout << "\n\n\nBoss battle\n";
   }
 };
 
 int main() {
   unique_ptr<GamePlay> game(new GamePlay());
-  Character *player = new Player("Player", 100, 15, 10, 10);
+  int playerHp = 100, playerAttackStat = 15, playerDeffenceStat = 10,
+      playerMagicStat = 10;
+  Character *player = new Player("Player", playerHp, playerAttackStat,
+                                 playerDeffenceStat, playerMagicStat);
   game->Play(player);
-  // if (!(player->IsAlive()))
-  //   cout << "You lost!! \n\n";
-  // else
-  //   cout << "You won!!\n\n";
+  if (!(player->IsAlive()))
+    cout << "You lost!! \n\n";
+  else
+    cout << "You won!!\n\n";
 
   delete player;
 }
