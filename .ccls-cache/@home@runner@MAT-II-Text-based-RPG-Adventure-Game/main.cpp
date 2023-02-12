@@ -1,51 +1,4 @@
 
-
-// Rewards:
-// Sword (Rewarded after completing level 2)
-// Shield (Rewarded after completing level 3)
-// Armour (Rewarded after completing level 4)
-// Bow (Rewarded after completing level 5)
-
-// After Every Level:
-// Increase the Character's stats after each level.
-// Increase Max HP and reset the maxHealth to max,
-
-// Level Details
-
-// Level 2
-
-// There will be two enemies.
-// For enemies, code randomly generated attacks and defences against our
-// Character. Special Ability Awarded - Critical hits (performs attack with
-// massive damage boost) Probability - 10% Special Item Awarded - Sword
-// Level 3
-
-// There will be three enemies.
-// For enemies, code randomly generated attacks and defences against our
-// Character. Special Ability Awarded - Blocker (will get 0 damage on enemy hit)
-// Probability - 10 %
-// Special Item Awarded - Shield
-// Level 4
-
-// There will be four enemies.
-// For enemies, code randomly generated attacks and defences against our
-// Character. Special Ability Awarded - Life steal (Recovering a small amount of
-// HP after giving damage) Probability - 10 % Special Item Awarded - Armour
-// Level 5
-
-// There will be five enemies.
-// For enemies, code randomly generated attacks and defences against our
-// Character. Special Ability Awarded - Ranged Attack (After performing this
-// attack, the Hero won't take damage for the next attack of the enemy)
-// Probability - 10 % Special Item Awarded - Bow Level 6
-
-// Boss Fight Murlocs.
-// For enemies, code randomly generated attacks and defences against our
-// Character. Add special abilities to the Murlocs of your choice, some examples
-// Ground Slash
-// Speed Dash
-// maxHealth Regeneration
-
 #include <iostream>
 #include <memory>
 #include <random>
@@ -66,10 +19,6 @@ bool activate(int percentage) {
   return false;
 }
 
-// Character needs to have:
-// maxHealth
-// Melee Damage
-// Defence
 enum CharacterState {
   Idle = 1,
   Attacking,
@@ -169,7 +118,7 @@ public:
       return;
     }
     if (GetType() != EnemyType)
-      this->SpecialAbility();
+      this->SpecialAbility(enemyCharacter);
 
     cout << "\nAttack was successfull\n";
 
@@ -212,7 +161,7 @@ class Player : public Character {
 private:
   int critActivationPercentage = 10;
   int blockActivationPercentage = 10;
-  int lifeStealActivationPercentage = 10;
+  int lifeStealActivationPercentage = 100;
 
 public:
   Player(string name, int hp, int as, int ds, int ms, int ap = 10)
@@ -267,6 +216,7 @@ public:
       return;
     }
     SetState(Healing);
+    cout<<"\nhealing\n";
     if (!healAmt)
       healAmt = (GetMaxHealth() / GetMagic()) + (GetMagic() / 2);
     int newHealth = GetHealth() + healAmt;
@@ -307,8 +257,9 @@ public:
     if (GetState() == Attacking) {
       if (activate(lifeStealActivationPercentage)) {
         cout << "\n" << GetName() << " Life Steal Ability Activated\n";
-        int healAmt =
-            ((GetAttackStat() + GetMagic()) - enemyCharacter->GetDefence()) / 2;
+        int healAmt = (int)(((GetAttackStat() + GetMagic()) -
+                             enemyCharacter->GetDefence()) /
+                            2);
         Heal(healAmt);
         return;
       }
@@ -463,18 +414,20 @@ public:
       break;
     case 2:
       player->SetAttackPower(bowAttackPower);
-      cout << "\nPlayer used bow to attack\n";
+      cout << "\nPlayer used bow to attack\nPlayer will Defend in this round";
       break;
     }
     player->DealDamage(enemy, player->GetAttackPower());
+    if(player->GetAttackPower() == bowAttackPower)
+      player->SetState(Defence);
   }
 
   void PlayerTurn(Character *player, int num, Character *enemyies[num]) {
-    // if (player->GetState() == Stunned) {
-    //   cout << "Player is stuned can't move\n";
-    //   player->ResetActivity();
-    //   return;
-    // }
+    if (player->GetState() == Stunned) {
+      cout << "Player is stuned can't move\n";
+      player->ResetActivity();
+      return;
+    }
     int userInput = 0;
     int flag = 1;
     while (flag) {
