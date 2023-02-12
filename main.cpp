@@ -77,7 +77,8 @@ enum CharacterState {
   Healing,
   Invincible,
   Critical,
-  Defence
+  Defence,
+  Stunned
 };
 enum ChacterType { PlayerType = 1, EnemyType, BossEnemyType };
 class Character {
@@ -167,11 +168,6 @@ public:
       enemyCharacter->ResetActivity();
       return;
     }
-    if (enemyCharacter->GetState() != Defence &&
-        enemyCharacter->GetType() != EnemyType) {
-      enemyCharacter->SetState(Attacked);
-      enemyCharacter->SpecialAbility();
-    }
     if (GetType() != EnemyType)
       this->SpecialAbility();
 
@@ -187,6 +183,13 @@ public:
            << " defened , damage reduced by half\n\n\n";
       damageAmt /= 2;
     }
+    if (enemyCharacter->GetState() != Defence &&
+        enemyCharacter->GetType() != EnemyType &&
+        enemyCharacter->GetState() != Stunned) {
+      enemyCharacter->SetState(Attacked);
+      enemyCharacter->SpecialAbility(this);
+    }
+
     int newHealth = enemyCharacter->GetHealth() - damageAmt;
     if (newHealth <= 0) {
       enemyCharacter->SetCurHealth(0);
@@ -194,8 +197,10 @@ public:
       return;
     }
     enemyCharacter->SetCurHealth(newHealth);
-    ResetActivity();
-    enemyCharacter->ResetActivity();
+    if (GetState() == Attacking)
+      ResetActivity();
+    if (enemyCharacter->GetState() == Attacked)
+      enemyCharacter->ResetActivity();
   }
   virtual void Heal(int healAmt = 0) {
     cout << GetName() << " Cant use heal\n\n";
@@ -331,21 +336,21 @@ public:
       : Character(name, hp, as, ds, ap, BossEnemyType, ms) {
     cout << "\nBoss is here\n\n";
   }
-void Heal(int healAmt = 0){
-  if(GetHealth() == GetMaxHealth())
-  {
-    cout<<"\nHealth full so nothing happend\n";
-    return;
+  void Heal(int healAmt = 0) {
+    if (GetHealth() == GetMaxHealth()) {
+      cout << "\nHealth full so nothing happend\n";
+      return;
+    }
+    float healthpercentage = 0.2;
+    healAmt = (int)((0.2 * GetMaxHealth()));
+    int newHealth = healAmt + GetHealth();
+    if (newHealth > GetMaxHealth())
+      newHealth = GetMaxHealth();
+    SetCurHealth(newHealth);
   }
-  float healthpercentage = 0.2;
-  healAmt = (int)((0.2*GetMaxHealth()));
-  int newHealth = healAmt + GetHealth();
-  if (newHealth > GetMaxHealth())
-    newHealth = GetMaxHealth();
-  SetCurHealth(newHealth);
-}
-  // Defence, After succefull attack 20% chance to recover 25% of max hp, After attack 10 % chance of stuning player for next round
-  void SpecialAbility(Character *enemyCharacter = NULL) {
+  // Defence, After succefull attack 20% chance to recover 25% of max hp, After
+  // attack 10 % chance of stuning player for next round
+  void SpecialAbility(Character *player = NULL) {
     if (GetState() == Idle)
       SetState(Defence);
     if (GetState() == Attacking) {
@@ -357,6 +362,13 @@ void Heal(int healAmt = 0){
         Heal();
       }
     }
+    if (GetState() == Attacked) {
+      int stunActivationPercentage = 10;
+      if (activate(stunActivationPercentage)) {
+        cout << "\nBoss special ability stun activated\n";
+        player->SetState(Stunned);
+      }
+    }
   }
 };
 
@@ -364,26 +376,27 @@ class GamePlay {
 private:
   int gameOver = false;
   int bossLevel = 6;
+  int mobEnemyhealth = 100;
+  int mobEnemyAttackStat = 15;
+  int mobEnemyDefenceStat = 5;
+  int bossEnemyhealth = 200;
+  int bossEnemyAttackStat = 35;
+  int bossEnemyDefenceStat = 30;
+  int bossMagicStat = 20;
 
 public:
   GamePlay() { cout << "Lets Start the game:\n\n"; }
   void SpawnEnemy(int num, Character *enemyies[num]) {
-    int enemyHp = 100;
-    int attackStat = 15;
-    int defenseStat = 5;
     for (int i = 0; i < num; i++) {
-      enemyies[i] = new Enemy("Enemy " + to_string(i + 1), enemyHp, attackStat,
-                              defenseStat);
+      enemyies[i] = new Enemy("Enemy " + to_string(i + 1), mobEnemyhealth,
+                              mobEnemyAttackStat, mobEnemyDefenceStat);
     }
   }
 
   void SpawnBossEnemy(Character *bossEnemy[1]) {
-    int enemyHp = 200;
-    int attackStat = 35;
-    int defenseStat = 30;
-    int magicStat = 20;
-    bossEnemy[0] = new BossEnemy("Boss Enemy", enemyHp, attackStat, defenseStat,
-                                 magicStat);
+    bossEnemy[0] =
+        new BossEnemy("Boss Enemy", bossEnemyhealth, bossEnemyAttackStat,
+                      bossEnemyDefenceStat, bossMagicStat);
   }
 
   void DeleteEnemy(int num, Character *enemyies[num]) {
@@ -457,6 +470,11 @@ public:
   }
 
   void PlayerTurn(Character *player, int num, Character *enemyies[num]) {
+    // if (player->GetState() == Stunned) {
+    //   cout << "Player is stuned can't move\n";
+    //   player->ResetActivity();
+    //   return;
+    // }
     int userInput = 0;
     int flag = 1;
     while (flag) {
@@ -492,31 +510,15 @@ public:
     }
   }
 
-  void MobEnemyTurn(Character *enemy, Character *player) {
-    int attackChancePercentage = 75;
-    if (activate(attackChancePercentage)) {
-      enemy->DealDamage(player, enemy->GetAttackPower());
-    } else {
-      enemy->SpecialAbility();
-    }
-  }
-
-  void BossEnemyTurn(Character *enemy, Character *player) {
-    int attackChancePercentage = 75;
-    if (activate(attackChancePercentage)) {
-      enemy->DealDamage(player, enemy->GetAttackPower());
-    } else {
-      enemy->SpecialAbility();
-    }
-  }
-
   void EnemyTurn(Character *player, int num, Character *enemyies[num]) {
     for (int i = 0; i < num; i++) {
       if (enemyies[i]->IsAlive()) {
-        if (enemyies[i]->GetType() != BossEnemyType)
-          MobEnemyTurn(enemyies[i], player);
-        else
-          BossEnemyTurn(enemyies[i], player);
+        int attackChancePercentage = 75;
+        if (activate(attackChancePercentage)) {
+          enemyies[i]->DealDamage(player, enemyies[i]->GetAttackPower());
+        } else {
+          enemyies[i]->SpecialAbility();
+        }
       }
     }
   }
