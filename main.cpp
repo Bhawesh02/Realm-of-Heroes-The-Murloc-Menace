@@ -216,7 +216,7 @@ public:
       return;
     }
     SetState(Healing);
-    cout<<"\nhealing\n";
+    cout << "\nhealing\n";
     if (!healAmt)
       healAmt = (GetMaxHealth() / GetMagic()) + (GetMagic() / 2);
     int newHealth = GetHealth() + healAmt;
@@ -282,6 +282,11 @@ public:
 };
 
 class BossEnemy : public Character {
+private:
+  int healActivationPercentage = 20;
+  int stunActivationPercentage = 10;
+  float healthpercentage = 0.2;
+
 public:
   BossEnemy(string name, int hp, int as, int ds, int ms, int ap = 25)
       : Character(name, hp, as, ds, ap, BossEnemyType, ms) {
@@ -292,7 +297,6 @@ public:
       cout << "\nHealth full so nothing happend\n";
       return;
     }
-    float healthpercentage = 0.2;
     healAmt = (int)((0.2 * GetMaxHealth()));
     int newHealth = healAmt + GetHealth();
     if (newHealth > GetMaxHealth())
@@ -305,7 +309,6 @@ public:
     if (GetState() == Idle)
       SetState(Defence);
     if (GetState() == Attacking) {
-      int healActivationPercentage = 20;
       if (activate(healActivationPercentage)) {
         cout << "\n"
              << GetName()
@@ -314,7 +317,6 @@ public:
       }
     }
     if (GetState() == Attacked) {
-      int stunActivationPercentage = 10;
       if (activate(stunActivationPercentage)) {
         cout << "\nBoss special ability stun activated\n";
         player->SetState(Stunned);
@@ -418,7 +420,7 @@ public:
       break;
     }
     player->DealDamage(enemy, player->GetAttackPower());
-    if(player->GetAttackPower() == bowAttackPower)
+    if (player->GetAttackPower() == bowAttackPower)
       player->SetState(Defence);
   }
 
@@ -429,9 +431,6 @@ public:
       return;
     }
     int userInput = 0;
-    int flag = 1;
-    while (flag) {
-      flag = 0;
       cout << "Player Current Health: " << player->GetHealth()
            << "\nPlayer choose what to do (1 -> Attack, 2 -> Heal, 3 -> Show "
               "Current Stats)\n";
@@ -457,16 +456,17 @@ public:
         break;
       case 3:
         player->ShowStats();
-        flag = 1;
+        PlayerTurn(player,num,enemyies);
         break;
       }
-    }
+    
   }
 
   void EnemyTurn(Character *player, int num, Character *enemyies[num]) {
+    int attackChancePercentage = 75;
+
     for (int i = 0; i < num; i++) {
       if (enemyies[i]->IsAlive()) {
-        int attackChancePercentage = 75;
         if (activate(attackChancePercentage)) {
           enemyies[i]->DealDamage(player, enemyies[i]->GetAttackPower());
         } else {
