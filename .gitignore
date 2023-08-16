@@ -32,3 +32,8 @@
 *.app
 #repl
 *.ccls-cache
+*.replit
+*.nix
+
+#extra
+Makefile.txt
